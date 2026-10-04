@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genshin Shop & Wheel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ШАПКА -->
+    <header class="header">
+        <div class="logo" onclick="showSection('catalog-section')">💎 Genshin Store</div>
+        <nav class="nav">
+            <a href="#" onclick="showSection('catalog-section')">Каталог</a>
+            <a href="#" onclick="showSection('topup-section')">Пополнение</a>
+            <a href="#" onclick="showSection('cases-section')">Кейсы</a>
+            <a href="#" onclick="showSection('wheel-section')">Колесо Удачи</a>
+            <a href="#" id="admin-link" class="admin-only hidden" onclick="showSection('admin-section')">⚙️ Админка</a>
+        </nav>
+        <div class="user-panel">
+            <div id="user-display" class="hidden">
+                <span class="balance-badge"><span id="user-balance">0</span> 💎</span>
+                <button class="small-btn" onclick="showSection('profile-section')">👤 <span id="user-name">Профиль</span></button>
+            </div>
+            <div id="auth-buttons" class="auth-buttons">
+                <button id="open-login-btn" onclick="openAuthModal('login')">Войти</button>
+                <button id="open-register-btn" onclick="openAuthModal('register')">Регистрация</button>
+                <button id="logout-btn" class="hidden" onclick="logout()">Выход</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- БАННЕР -->
+    <section class="hero">
+        <h1>Магазин Примогемов и Скинов</h1>
+        <p style="color: #b3cca8;">Моментальная доставка на ваш UID, гарантия безопасности и ежедневные бонусы</p>
+    </section>
+
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
+    <main class="container">
+
+        <!-- СЕКЦИЯ: КАТАЛОГ -->
+        <section id="catalog-section" class="main-section">
+            <div class="filters">
+                <button onclick="filterSkins('all')">Все</button>
+                <button onclick="filterSkins('character')">Скины</button>
+                <button onclick="filterSkins('currency')">Примогемы</button>
+            </div>
+            <div id="skins-container" class="skins-grid"></div>
+        </section>
+
+        <!-- СЕКЦИЯ: ПОПОЛНЕНИЕ (КРИСТАЛЛЫ/РУБЛИ) -->
+        <section id="topup-section" class="main-section hidden">
+            <h2 class="gold-text" style="margin-bottom: 20px;">Пополнение Кристаллов (Рубли)</h2>
+            <div id="topup-packs-container" class="skins-grid"></div>
+        </section>
+
+        <!-- СЕКЦИЯ: КЕЙСЫ -->
+        <section id="cases-section" class="main-section hidden">
+            <h2 class="gold-text" style="margin-bottom: 20px;">Кейсы с Сокровищами</h2>
+            <div id="cases-container" class="skins-grid"></div>
+        </section>
+
+        <!-- СЕКЦИЯ: КОЛЕСО ФОРТУНЫ -->
+        <section id="wheel-section" class="main-section hidden">
+            <div class="wheel-wrapper-box">
+                <h2>🎡 Ежедневное Колесо Удачи</h2>
+                <div class="timer-box">До следующего вращения: <span id="cooldown-timer">Проверка...</span></div>
+                
+                <div class="wheel-container">
+                    <div class="wheel-pointer"></div>
+                    <canvas id="wheel-canvas" width="400" height="400"></canvas>
+                </div>
+
+                <button id="spin-wheel-btn" class="submit-btn" style="width: 200px; font-size: 16px;" onclick="spinWheel()">Крутить!</button>
+                <div id="wheel-result" class="roulette-result hidden"></div>
+            </div>
+        </section>
+
+        <!-- СЕКЦИЯ: ПРОФИЛЬ И ИНВЕНТАРЬ -->
+        <section id="profile-section" class="main-section hidden">
+            <div class="profile-card">
+                <h2 class="gold-text">Личный кабинет</h2>
+                <div class="profile-info" style="margin-top: 15px;">
+                    <p>Имя: <b id="prof-name">-</b></p>
+                    <p>Email: <b id="prof-email">-</b></p>
+                    <p>Роль: <b id="prof-role">-</b></p>
+                    <p>Баланс: <b id="prof-balance">0</b> 💎</p>
+                    
+                    <hr class="divider">
+                    
+                    <h3>Привязка Genshin Impact UID</h3>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <input type="text" id="prof-uid" placeholder="Введите ваш UID (например: 701234567)">
+                        <button class="submit-btn" style="width: 180px;" onclick="saveUID()">Сохранить UID</button>
+                    </div>
+
+                    <hr class="divider">
+
+                    <!-- БЛОК СПОСОБОВ ОПЛАТЫ В ПРОФИЛЕ -->
+                    <h3>💳 Сохраненные банковские карты</h3>
+                    <div id="saved-cards-list" class="cards-list-box" style="margin: 10px 0;"></div>
+                    
+                    <button class="small-btn" onclick="toggleModal('add-card-modal')">+ Привязать новую карту</button>
+
+                    <hr class="divider">
+
+                    <h3>Инвентарь (Купленные товары)</h3>
+                    <div id="inventory-grid" class="inventory-grid"></div>
+
+                    <hr class="divider">
+
+                    <h3>История операций</h3>
+                    <ul id="purchase-history" style="list-style: none; padding-left: 0; font-size: 13px; color: #b3cca8; margin-top: 10px;"></ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- СЕКЦИЯ: АДМИН-ПАНОЕЛЬ (МОДУЛЬНАЯ БЛОЧНАЯ СТРУКТУРА) -->
+        <section id="admin-section" class="main-section hidden">
+            <h1 class="gold-text" style="margin-bottom: 25px;">⚡ Панель Администратора</h1>
+
+            <!-- БЛОК 1: ДОБАВЛЕНИЕ НОВОГО ТОВАРА -->
+            <div class="admin-block">
+                <div class="admin-block-header">
+                    <h3>➕ Добавить новый товар в магазин</h3>
+                    <span class="badge">Модуль Каталога</span>
+                </div>
+                <form id="admin-item-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Название товара:</label>
+                            <input type="text" id="item-title" placeholder="Прим: 60 Примогемов или Скин" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Тип товара:</label>
+                            <select id="item-type">
+                                <option value="character">Скин / Персонаж</option>
+                                <option value="currency">Примогемы / Кристаллы</option>
+                                <option value="case">Кейс</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Цена (в 💎 Кристаллах):</label>
+                            <input type="number" id="item-price" placeholder="100" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ссылка на изображение (Media URL):</label>
+                        <input type="url" id="item-image-url" placeholder="https://domain.com/image.png (Оставьте пустым для авто-картинки)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Описание товара:</label>
+                        <textarea id="item-desc" rows="2" placeholder="Краткое описание бонусов или условий..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="submit" class="submit-btn">Опубликовать товар</button>
+                        <button type="reset" class="small-btn" style="background:#555; color:#fff;">Очистить форму</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- БЛОК 2: УПРАВЛЕНИЕ СУЩЕСТВУЮЩИМИ ТОВАРАМИ -->
+            <div class="admin-block">
+                <div class="admin-block-header">
+                    <h3>📦 Управление товарами и ценами</h3>
+                    <span class="badge">База данных</span>
+                </div>
+                <div id="admin-items-list" class="admin-items-list"></div>
+            </div>
+
+            <!-- БЛОК 3: НАСТРОЙКА КЕЙСОВ -->
+            <div class="admin-block">
+                <div class="admin-block-header">
+                    <h3>🎰 Настройка дропа из Кейсов</h3>
+                    <span class="badge">Шансы Дропа</span>
+                </div>
+                <div class="case-admin-controls">
+                    <select id="case-select-admin" onchange="renderCaseAdminRewards()"></select>
+                    <select id="case-item-select-admin"></select>
+                    <input type="number" id="case-item-chance-admin" placeholder="Шанс выпада %" style="width: 140px;">
+                    <button class="small-btn" onclick="addRewardToCase()">Добавить предмет в кейс</button>
+                </div>
+                <h4>Предметы внутри выбранного кейса:</h4>
+                <div id="case-rewards-admin-list" class="wheel-rewards-admin-list" style="margin-top: 10px;"></div>
+            </div>
+
+            <!-- БЛОК 4: НАСТРОЙКА КОЛЕСА ФОРТУНЫ -->
+            <div class="admin-block">
+                <div class="admin-block-header">
+                    <h3>🎡 Настройка секторов Колеса Удачи</h3>
+                    <span class="badge">Колесо Удачи</span>
+                </div>
+                <div class="wheel-admin-controls">
+                    <select id="wheel-item-select"></select>
+                    <input type="number" id="wheel-item-chance" placeholder="Шанс %" style="width: 120px;">
+                    <button class="small-btn" onclick="addRewardToWheel()">Добавить в Колесо</button>
+                </div>
+                <h4>Текущие сектора колеса:</h4>
+                <div id="wheel-rewards-list" class="wheel-rewards-admin-list" style="margin-top: 10px;"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- МОДАЛЬНОЕ ОКНО: АВТОРИЗАЦИЯ / РЕГИСТРАЦИЯ -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('auth-modal')">&times;</span>
+            <div class="auth-tabs">
+                <button id="tab-login-btn" class="auth-tab-btn active" onclick="switchAuthTab('login')">Вход</button>
+                <button id="tab-register-btn" class="auth-tab-btn" onclick="switchAuthTab('register')">Регистрация</button>
+            </div>
+
+            <form id="login-form">
+                <input type="email" id="login-email" placeholder="Ваш Email" required>
+                <input type="password" id="login-password" placeholder="Пароль" required>
+                <button type="submit" class="submit-btn" style="width: 100%; margin-top: 10px;">Войти</button>
+            </form>
+
+            <form id="register-form" class="hidden">
+                <input type="text" id="reg-name" placeholder="Имя пользователя" required>
+                <input type="email" id="reg-email" placeholder="Email" required>
+                <input type="password" id="reg-password" placeholder="Пароль" required>
+                <button type="submit" class="submit-btn" style="width: 100%; margin-top: 10px;">Создать аккаунт</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ ТОВАРА (АДМИН) -->
+    <div id="edit-item-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('edit-item-modal')">&times;</span>
+            <h3>Редактирование товара</h3>
+            <form id="edit-item-form">
+                <input type="hidden" id="edit-item-id">
+                <label>Название:</label>
+                <input type="text" id="edit-item-title" required>
+                <label>Тип:</label>
+                <select id="edit-item-type">
+                    <option value="character">Скин</option>
+                    <option value="currency">Примогемы</option>
+                    <option value="case">Кейс</option>
+                </select>
+                <label>Цена 💎:</label>
+                <input type="number" id="edit-item-price" required>
+                <label>Media URL:</label>
+                <input type="url" id="edit-item-image-url">
+                <label>Описание:</label>
+                <textarea id="edit-item-desc"></textarea>
+                <button type="submit" class="submit-btn" style="width: 100%; margin-top: 10px;">Сохранить изменения</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ОТКРЫТИЕ КЕЙСА -->
+    <div id="case-modal" class="modal">
+        <div class="modal-content case-modal-content">
+            <span class="close" onclick="closeCaseModal()">&times;</span>
+            <h2 id="roulette-case-title" class="gold-text">Кейс</h2>
+            
+            <div class="roulette-wrapper">
+                <div class="roulette-container">
+                    <div id="roulette-track" class="roulette-track"></div>
+                </div>
+            </div>
+
+            <button id="spin-btn" class="submit-btn" onclick="spinCaseRoulette()">Открыть кейс</button>
+            <div id="roulette-result" class="roulette-result hidden"></div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ПРИВЯЗКА БАНКОВСКОЙ КАРТЫ -->
+    <div id="add-card-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('add-card-modal')">&times;</span>
+            <h3>💳 Привязать банковскую карту</h3>
+            <form id="add-card-form" style="margin-top: 15px;">
+                <label>Номер карты:</label>
+                <input type="text" id="card-number-input" placeholder="0000 0000 0000 0000" maxlength="19" required>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>Срок (ММ/ГГ):</label>
+                        <input type="text" id="card-exp-input" placeholder="12/28" maxlength="5" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>CVC/CVV:</label>
+                        <input type="password" id="card-cvc-input" placeholder="123" maxlength="3" required>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn" style="width: 100%; margin-top: 10px;">Сохранить карту</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ОПЛАТА ПОКУПКИ КРИСТАЛЛОВ -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('checkout-modal')">&times;</span>
+            <h3>💳 Оплата заказа</h3>
+            <div id="checkout-details" style="margin: 15px 0; background: #182d22; padding: 12px; border-radius: 8px;"></div>
+            
+            <div class="form-group">
+                <label>Выберите способ оплаты:</label>
+                <select id="checkout-payment-method" onchange="toggleCheckoutCardSelect()">
+                    <option value="saved">Сохраненной картой</option>
+                    <option value="new">Новой картой</option>
+                    <option value="sbp">СБП / SBER Pay</option>
+                </select>
+            </div>
+
+            <div id="checkout-saved-cards-group" class="form-group" style="margin-top: 10px;">
+                <label>Выберите привязанную карту:</label>
+                <select id="checkout-saved-card-select"></select>
+            </div>
+
+            <div id="checkout-new-card-group" class="form-group hidden" style="margin-top: 10px;">
+                <input type="text" id="checkout-card-num" placeholder="Номер карты" maxlength="19">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="checkout-card-exp" placeholder="ММ/ГГ" maxlength="5">
+                    <input type="password" id="checkout-card-cvc" placeholder="CVC" maxlength="3">
+                </div>
+            </div>
+
+            <button id="pay-confirm-btn" class="submit-btn" style="width: 100%; margin-top: 15px;" onclick="processPayment()">Оплатить сейчас</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
